@@ -203,8 +203,7 @@ export default function RelayEventDetailPage({ event, updatedAt }: Props) {
       </div>
 
       {/* ── Bento info grid ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        {/* Race info card */}
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <div className="md:col-span-2 bg-white border-4 border-[#1a1a1a] p-6 shadow-[6px_6px_0px_0px_rgba(26,26,26,1)] relative overflow-hidden">
           <div className="absolute -right-8 -top-8 opacity-5 select-none pointer-events-none">
             <span style={{ fontSize: "160px", lineHeight: 1 }}>⏱</span>
@@ -242,7 +241,6 @@ export default function RelayEventDetailPage({ event, updatedAt }: Props) {
           )}
         </div>
 
-        {/* Record card */}
         <div className="bg-[#ffcc00] border-4 border-[#1a1a1a] p-6 shadow-[6px_6px_0px_0px_rgba(26,26,26,1)] flex flex-col justify-between">
           <div>
             <p
@@ -265,7 +263,7 @@ export default function RelayEventDetailPage({ event, updatedAt }: Props) {
             Bilgi mevcut değil
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* ── Results table ─────────────────────────────────────────── */}
       {hasResults ? (
