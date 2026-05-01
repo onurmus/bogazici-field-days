@@ -16,7 +16,7 @@
 
 import { fetchXlsxSheet, listDriveFolder, fetchXlsxSheetNames } from "./googleSheets";
 import { normalizeScheduleRows, SCHEDULE_FILE_ID, DAY1_SHEET_NAME } from "./normalizeSchedule";
-import { DAY1_FOLDER_ID, getDriveFileBase, getCategoryKey, GENDER_KEYWORDS } from "./eventConfig";
+import { DAY1_FOLDER_ID, getDriveFileBase, resolveCompositeEventBase, getCategoryKey, GENDER_KEYWORDS, FIELD_EVENT_BASES, RELAY_EVENT_BASES } from "./eventConfig";
 import type { ScheduleEntry } from "./types";
 
 export interface DiscoveredEvent {
@@ -26,13 +26,23 @@ export interface DiscoveredEvent {
   driveFileId: string;
   /** Sheet name containing the result/heat data */
   heatsSheet: string;
+  /**
+   * For mixed-gender (Kadın-Erkek) events only: the Erkek sheet name.
+   * When set, the page renders two separate sections — one per gender.
+   */
+  additionalSheet?: string;
   /** Sheet names available in the file (for tab rendering) */
   allSheets: string[];
   /**
    * true → field event (jump or throw): use FieldEventDetailPage.
-   * false → track event (sprint/distance): use EventDetailPage (heats).
+   * false → track/relay event.
    */
   isField: boolean;
+  /**
+   * true → relay event (4×100, 4×400): use RelayEventDetailPage.
+   * false → track or field event.
+   */
+  isRelay: boolean;
 }
 
 /**
@@ -50,9 +60,12 @@ export async function discoverEvent(slug: string): Promise<DiscoveredEvent | nul
   // Strip the appended category suffix (e.g. " Erkekler", " Kadınlar") from
   // the display title to recover the raw event name for the lookup.
   const rawEventName = entry.title
-    .replace(/\s+(Erkekler|Kadınlar|Karma)$/i, "")
+    .replace(/\s+(Erkekler|Kadınlar|Karma|Kadın-Erkek)$/i, "")
     .trim();
-  const resolvedBase = getDriveFileBase(rawEventName);
+  // First try the exact map, then the pattern-based fallback for composite
+  // events (finals, relay variants) that share a Drive file with other events
+  const resolvedBase =
+    getDriveFileBase(rawEventName) ?? resolveCompositeEventBase(rawEventName);
   if (!resolvedBase) return null;
 
   // 3. List the Drive folder to find the actual file ID
@@ -60,10 +73,10 @@ export async function discoverEvent(slug: string): Promise<DiscoveredEvent | nul
   // must normalize both sides to NFC before comparing.
   const nfc = (s: string) => s.normalize("NFC").toLowerCase();
   const files = await listDriveFolder(DAY1_FOLDER_ID);
+  // Exact match only — never use startsWith, as it would cause "Gülle Atma" to
+  // accidentally match "Gülle Atma Amatör.xlsx" (and "1500m" → "1500m Amatör.xlsx").
   const file = files.find(
-    (f) =>
-      nfc(f.name) === nfc(`${resolvedBase}.xlsx`) ||
-      nfc(f.name).startsWith(nfc(resolvedBase))
+    (f) => nfc(f.name) === nfc(`${resolvedBase}.xlsx`)
   );
   if (!file) return null;
 
@@ -72,33 +85,87 @@ export async function discoverEvent(slug: string): Promise<DiscoveredEvent | nul
   const categoryKey = getCategoryKey(entry.category);
   const genderWords = GENDER_KEYWORDS[categoryKey] ?? ["erkek"];
 
-  // Find the seçme (qualifying heats) sheet matching the gender
-  const heatsSheet = allSheets.find((s) => {
-    const lower = s.toLowerCase();
-    const hasGender = genderWords.some((w) => lower.includes(w));
-    // Prefer the start-list sheet (seçme), not the results or final sheet
-    const isHeats = lower.includes("seçme") && !lower.includes("sonuç");
-    return hasGender && isHeats;
-  })
-    // Fallback: any sheet matching gender keyword
-    ?? allSheets.find((s) => {
-      const lower = s.toLowerCase();
-      return genderWords.some((w) => lower.includes(w));
+  // Determine event type up-front so the sheet picker can use it
+  const isField = FIELD_EVENT_BASES.has(resolvedBase);
+  const isRelay = RELAY_EVENT_BASES.has(resolvedBase);
+
+  // Flags derived from the raw event name
+  const rawLower = rawEventName.toLowerCase().normalize("NFC");
+  const isFinal = rawLower.includes("final");
+  const isAmator = rawLower.includes("amatör") || rawLower.includes("amator");
+
+  // nfc-lowercased sheet name helper
+  const sheetLower = (s: string) => s.toLowerCase().normalize("NFC");
+
+  let heatsSheet: string | undefined;
+
+  if (isFinal) {
+    // Final heats: prefer a sheet that contains both "final" and the gender keyword
+    heatsSheet = allSheets.find((s) => {
+      const sl = sheetLower(s);
+      return genderWords.some((w) => sl.includes(w)) && sl.includes("final");
     });
+  } else if (isRelay) {
+    // Relay: sheets are named ERKEKLER / KADINLAR / KARMA / AMATÖR ERKEK / AMATÖR KADIN
+    // For amatör slugs, require the sheet name to also contain "amatör"/"amator"
+    heatsSheet = allSheets.find((s) => {
+      const sl = sheetLower(s);
+      const hasGender = genderWords.some((w) => sl.includes(w));
+      const sheetIsAmator = sl.includes("amatör") || sl.includes("amator");
+      return hasGender && (isAmator ? sheetIsAmator : !sheetIsAmator);
+    });
+  } else {
+    // Regular track events: prefer start-list (seçme) sheet for the gender,
+    // excluding result sheets ("seçme sonuç")
+    heatsSheet = allSheets.find((s) => {
+      const sl = sheetLower(s);
+      return (
+        genderWords.some((w) => sl.includes(w)) &&
+        sl.includes("seçme") &&
+        !sl.includes("sonuç")
+      );
+    });
+  }
+
+  // Fallback: any sheet matching the gender keyword
+  if (!heatsSheet) {
+    heatsSheet = allSheets.find((s) =>
+      genderWords.some((w) => sheetLower(s).includes(w))
+    );
+  }
 
   if (!heatsSheet) return null;
 
-  // Field events are explicitly identified by their Drive file base name.
-  // (Hurdles also lack a "Seçme" sheet, so sheet-name heuristics are unreliable.)
-  const { FIELD_EVENT_BASES } = await import("./eventConfig");
-  const isField = FIELD_EVENT_BASES.has(resolvedBase);
+  // For mixed-gender (Kadın-Erkek) events, also find the Erkek sheet so the
+  // page can render two sections (Kadınlar + Erkekler) side by side.
+  const isKadinErkek = /kad[iı]n-?erkek/i.test(entry.category);
+  let additionalSheet: string | undefined;
+  if (isKadinErkek) {
+    const erkekWords = GENDER_KEYWORDS["erkek"] ?? ["erkek"];
+    let erkekSheet = allSheets.find((s) => {
+      const sl = sheetLower(s);
+      return (
+        erkekWords.some((w) => sl.includes(w)) &&
+        sl.includes("seçme") &&
+        !sl.includes("sonuç")
+      );
+    });
+    if (!erkekSheet) {
+      erkekSheet = allSheets.find((s) =>
+        erkekWords.some((w) => sheetLower(s).includes(w))
+      );
+    }
+    additionalSheet = erkekSheet;
+  }
 
   return {
     scheduleEntry: entry,
     driveFileId: file.id,
     heatsSheet,
+    additionalSheet,
     allSheets,
     isField,
+    isRelay,
   };
 }
 

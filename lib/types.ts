@@ -77,6 +77,42 @@ export interface NormalizedFieldEvent {
   results: FieldAthleteResult[];
 }
 
+/** A single team's entry in a relay result list */
+export interface RelayTeamResult {
+  rank: string;      // overall finish rank ("1", "2"…) — "" before results
+  bib: string;       // Göğüs No
+  teamName: string;  // Takımı
+  time: string;      // Derece
+  placing: string;   // Sıralama column
+  points: string;    // PUAN column
+}
+
+/** A single lane entry in a relay start-list heat */
+export interface RelayHeatEntry {
+  lane: string;
+  bib: string;
+  teamName: string;
+}
+
+/** One heat in a relay start list */
+export interface RelayHeat {
+  name: string;           // "1.SERİ", "2.SERİ" etc.
+  entries: RelayHeatEntry[];
+}
+
+/** A normalized relay event (4×100, 4×400) */
+export interface NormalizedRelayEvent {
+  slug: string;
+  title: string;
+  day: 1 | 2;
+  scheduledTime: string;
+  round: string;
+  category: string;
+  status: EventStatus;
+  results: RelayTeamResult[];
+  heats: RelayHeat[];
+}
+
 /** A lightweight event summary used on the schedule/home page */
 export interface ScheduleEntry {
   slug: string;

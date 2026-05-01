@@ -71,6 +71,15 @@ export const EVENT_NAME_TO_DRIVE_FILE: Record<string, string> = {
 };
 
 /**
+ * Drive file base names that correspond to relay events (4x100, 4x400).
+ * These are routed to RelayEventDetailPage instead of EventDetailPage.
+ */
+export const RELAY_EVENT_BASES = new Set([
+  "4x100m",
+  "4x400m",
+]);
+
+/**
  * Drive file base names that correspond to field events (throws & jumps).
  * These are routed to FieldEventDetailPage instead of EventDetailPage.
  */
@@ -115,6 +124,24 @@ export function getDriveFileBase(eventName: string): string | undefined {
   for (const [k, v] of Object.entries(EVENT_NAME_TO_DRIVE_FILE)) {
     if (normalizeTurkish(k).replace(/\s+/g, "") === compacted) return v;
   }
+  return undefined;
+}
+
+/**
+ * Pattern-based resolver for composite events that share a Drive file with
+ * regular events but need distinct slugs (so they can't be in
+ * EVENT_NAME_TO_DRIVE_FILE without causing slug collisions).
+ *
+ * Examples:
+ *   "100m Final A" → "100m"  (same file as heats, different sheet)
+ *   "4x100 Metre Bayrak" → "4x100m"
+ *   "4x100 Metre Karma Bayrak" → "4x100m"
+ */
+export function resolveCompositeEventBase(eventName: string): string | undefined {
+  const norm = normalizeTurkish(eventName).replace(/\s+/g, " ");
+  if (/^100M? FINAL/.test(norm)) return "100m";
+  if (/^4X100/.test(norm)) return "4x100m";
+  if (/^4X400/.test(norm)) return "4x400m";
   return undefined;
 }
 
