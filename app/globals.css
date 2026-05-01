@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* -----------------------------------------------------------------------
+   Design tokens — match the Stitch mockup (Bauhaus/neo-brutalist theme)
+   ----------------------------------------------------------------------- */
+:root {
+  --background: #f5f0e8;
+  --foreground: #1a1a1a;
+
+  /* Brand palette */
+  --color-primary: #1a1a1a;
+  --color-primary-container: #ffcc00;
+  --color-tertiary: #0055ff;
+  --color-surface: #f5f0e8;
+  --color-surface-variant: #e8e3da;
+  --color-surface-bright: #faf7f2;
+  --color-on-surface-variant: #4a4a4a;
+
+  /* Neo-brutalist shadows */
+  --neo-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  --neo-shadow-blue: 4px 4px 0px 0px #0055ff;
+  --neo-shadow-yellow: 4px 4px 0px 0px #ffcc00;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* -----------------------------------------------------------------------
+   Global resets
+   ----------------------------------------------------------------------- */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .headline {
+  font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* -----------------------------------------------------------------------
+   Utility classes shared across components
+   ----------------------------------------------------------------------- */
+.neo-border { border: 4px solid #1a1a1a; }
+.neo-shadow { box-shadow: var(--neo-shadow); }
+.neo-shadow-blue { box-shadow: var(--neo-shadow-blue); }
+.neo-shadow-yellow { box-shadow: var(--neo-shadow-yellow); }
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+}
+
