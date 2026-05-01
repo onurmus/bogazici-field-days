@@ -1,79 +1,88 @@
-// ---------------------------------------------------------------------------
-// HeatCard — displays one heat/series with its athlete list.
-// ---------------------------------------------------------------------------
-
 import type { Heat } from "@/lib/types";
 
 interface Props {
   heat: Heat;
 }
 
-const NOTE_STYLES: Record<string, string> = {
-  Q: "font-bold text-green-700",
-  q: "font-bold text-green-600",
-  PB: "font-bold text-blue-600",
-  DNS: "text-gray-400",
-  DNF: "text-gray-400",
-  DQ: "text-red-500",
-};
-
 export default function HeatCard({ heat }: Props) {
+  const hasResults = heat.athletes.some((a) => a.result !== "");
+
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between bg-gray-50 px-4 py-2">
-        <span className="text-sm font-semibold text-gray-700">
+    <section className="bg-white neo-border neo-shadow overflow-hidden">
+      {/* Heat header */}
+      <div className="bg-zinc-900 text-white px-5 py-4 flex justify-between items-center gap-4">
+        <h2
+          className="font-black text-2xl uppercase tracking-tight"
+          style={{ fontFamily: "var(--font-space-grotesk)" }}
+        >
           {heat.heat}. Seri
-        </span>
-        {heat.scheduledTime && (
-          <span className="text-xs text-gray-500">{heat.scheduledTime}</span>
-        )}
+        </h2>
+        <div className="flex items-center gap-3 shrink-0">
+          {heat.scheduledTime && (
+            <span
+              className="font-black uppercase text-sm px-2 py-0.5 bg-white text-zinc-900 neo-border"
+              style={{ fontFamily: "var(--font-space-grotesk)" }}
+            >
+              {heat.scheduledTime}
+            </span>
+          )}
+          <span
+            className="font-black uppercase text-xs tracking-widest text-yellow-400"
+            style={{ fontFamily: "var(--font-space-grotesk)" }}
+          >
+            {hasResults ? "Sonuç var" : "Sonuç bekleniyor"}
+          </span>
+        </div>
       </div>
 
+      {/* Athletes table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
-              <th className="px-3 py-2 text-center">Kul.</th>
-              <th className="px-3 py-2 text-center">No</th>
-              <th className="px-3 py-2">Sporcu</th>
-              <th className="px-3 py-2">Takım</th>
-              <th className="px-3 py-2 text-right">Derece</th>
-              <th className="px-3 py-2 text-center">Sıra</th>
-              <th className="px-3 py-2 text-center">Not</th>
+            <tr className="bg-stone-200 border-b-4 border-zinc-900">
+              {["Kulvar", "No", "Sporcu", "Takım / Üniversite", "Derece", "Sıra"].map((col, i, arr) => (
+                <th
+                  key={col}
+                  className={`p-3 font-black uppercase text-xs neo-border-none ${i < arr.length - 1 ? "border-r-2 border-zinc-900" : ""}`}
+                  style={{ fontFamily: "var(--font-space-grotesk)" }}
+                >
+                  {col}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody>
-            {heat.athletes.map((athlete, idx) => (
-              <tr
-                key={idx}
-                className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
-              >
-                <td className="px-3 py-2 text-center text-gray-500">
-                  {athlete.lane}
-                </td>
-                <td className="px-3 py-2 text-center text-gray-500">
-                  {athlete.bib}
-                </td>
-                <td className="px-3 py-2 font-medium text-gray-900">
-                  {athlete.athleteName}
-                </td>
-                <td className="px-3 py-2 text-gray-500">{athlete.team}</td>
-                <td className="px-3 py-2 text-right font-mono font-semibold text-gray-900">
-                  {athlete.result || "—"}
-                </td>
-                <td className="px-3 py-2 text-center text-gray-600">
-                  {athlete.rank || "—"}
-                </td>
-                <td
-                  className={`px-3 py-2 text-center ${NOTE_STYLES[athlete.note] ?? "text-gray-500"}`}
+          <tbody style={{ fontFamily: "var(--font-inter)" }}>
+            {heat.athletes.map((athlete, idx) => {
+              const isLast = idx === heat.athletes.length - 1;
+              return (
+                <tr
+                  key={idx}
+                  className={`hover:bg-yellow-50 ${!isLast ? "border-b-2 border-zinc-900" : ""}`}
                 >
-                  {athlete.note || ""}
-                </td>
-              </tr>
-            ))}
+                  <td className="p-3 border-r-2 border-zinc-900 font-black" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                    {athlete.lane}
+                  </td>
+                  <td className="p-3 border-r-2 border-zinc-900 text-sm">
+                    {athlete.bib || "—"}
+                  </td>
+                  <td className="p-3 border-r-2 border-zinc-900 font-bold uppercase text-sm">
+                    {athlete.athleteName || "—"}
+                  </td>
+                  <td className="p-3 border-r-2 border-zinc-900 text-xs text-zinc-600">
+                    {athlete.team || "—"}
+                  </td>
+                  <td className="p-3 border-r-2 border-zinc-900 text-center font-mono font-bold">
+                    {athlete.result || "—"}
+                  </td>
+                  <td className="p-3 text-center font-bold">
+                    {athlete.rank || "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }

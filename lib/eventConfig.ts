@@ -1,107 +1,140 @@
 // ---------------------------------------------------------------------------
-// Config-driven event structure
+// Structural configuration — the ONLY hardcoded knowledge about events.
 //
-// Each entry describes:
-//   - where to find the event data in Google Sheets
-//   - how each heat maps to a specific sheet range
-//   - enough metadata for the schedule page (no API call needed)
+// What IS stored here (structural, rarely changes):
+//   • Google Drive folder IDs for each competition day
+//   • A small lookup: schedule event name → Drive XLSX filename base
+//     (needed to link a schedule entry to the correct XLSX file on Drive)
 //
-// Replace placeholder spreadsheetId values with real IDs once available.
+// What is NOT stored here (comes from Google Drive/Sheets dynamically):
+//   • Scheduled times
+//   • Event titles / display names
+//   • Categories (Erkek / Kadın / KARMA)
+//   • Number of heats
+//   • Athlete start lists
+//   • Results
+//
+// To add a new event: upload the XLSX to the Drive folder and add one line
+// to EVENT_NAME_TO_DRIVE_FILE mapping the schedule name to the filename base.
 // ---------------------------------------------------------------------------
 
-export interface HeatRange {
-  /** 1-based heat number */
-  heat: number;
-  /**
-   * A1-notation range that covers this heat, e.g. "Erkekler!A1:F20".
-   * Columns are expected to map to: lane, bib, athleteName, team, result, note.
-   */
-  range: string;
-}
+/** Google Drive folder containing Day 1 event XLSX files */
+export const DAY1_FOLDER_ID = "1Nf4UAetwA28IZsoPixKLT_ELxJqndOOQ";
 
-export interface EventConfig {
-  /** URL-safe identifier used as the dynamic route segment */
-  slug: string;
-  /** Human-readable title shown in the UI (Turkish) */
-  title: string;
-  day: 1 | 2;
-  scheduledTime: string;
-  /** E.g. "Seçmeler", "Final" */
-  round: string;
-  /** E.g. "Erkekler", "Kadınlar" */
-  category: string;
-  /** Google Spreadsheet ID for this event */
-  spreadsheetId: string;
-  /** Name of the primary sheet/tab */
-  sheetName: string;
-  /** Per-heat range definitions */
-  heats: HeatRange[];
+/** Google Drive folder containing Day 2 event XLSX files (set when ready) */
+export const DAY2_FOLDER_ID = "";
+
+/**
+ * Maps normalized schedule event names (uppercase) to Drive XLSX filename
+ * bases (i.e. filename without the .xlsx extension, case-sensitive as on Drive).
+ *
+ * The schedule XLSX might say "100 Metre" or "100 METRE" — we uppercase-trim
+ * both keys and values when doing lookups, so case doesn't matter here.
+ *
+ * When an event name from the schedule isn't found here, no detail-page link
+ * is generated for that event (it will still appear on the schedule page).
+ */
+export const EVENT_NAME_TO_DRIVE_FILE: Record<string, string> = {
+  // Track — short sprints
+  "100 METRE":              "100m",
+  "200 METRE":              "200m",
+  "400 METRE":              "400m",
+  // Distance
+  "800 METRE":              "800m",
+  "1500 METRE":             "1500m",
+  "1500 METRE AMATOR":      "1500m Amatör",  // normalized (ö→o)
+  "3000 METRE":             "3000m",
+  "5000 METRE":             "5000m",
+  // Hurdles — must come BEFORE plain "100 METRE" prefix would match
+  "100 METRE ENGELLI":      "100_110 Engel",
+  "110 METRE ENGELLI":      "100_110 Engel",
+  "100 M ENGEL":            "100_110 Engel",
+  "110 M ENGEL":            "100_110 Engel",
+  "100/110 M ENGEL":        "100_110 Engel",
+  // Field — throws
+  "GULLE ATMA":             "Gülle Atma",    // normalized (ü→u)
+  "GULLE ATMA AMATOR":      "Gülle Atma Amatör",
+  "CIRIT":                  "Cirit",
+  "CIRIT ATMA":             "Cirit",
+  "DISK ATMA":              "Disk",
+  "CEKIC ATMA":             "Çekiç",
+  // Field — jumps
+  "UC ADIM":                "Üçadım",
+  "UCADIM":                 "Üçadım",
+  "UC ADIM ATLAMA":         "Üçadım",
+  "UZUN ATLAMA":            "Uzun Atlama",
+  "YUKSEK ATLAMA":          "Yüksek Atlama",
+  // Relay
+  "4X100":                  "4x100m",
+  "4 X 100":                "4x100m",
+  "BAYRAK":                 "4x100m",
+};
+
+/**
+ * Drive file base names that correspond to field events (throws & jumps).
+ * These are routed to FieldEventDetailPage instead of EventDetailPage.
+ */
+export const FIELD_EVENT_BASES = new Set([
+  "Gülle Atma",
+  "Gülle Atma Amatör",
+  "Cirit",
+  "Disk",
+  "Çekiç",
+  "Üçadım",
+  "Uzun Atlama",
+  "Yüksek Atlama",
+]);
+
+/** Normalize Turkish characters for map key lookup */
+function normalizeTurkish(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/Ş/g, "S")
+    .replace(/I/g, "I")
+    .replace(/İ/g, "I")
+    .replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U")
+    .replace(/Ö/g, "O")
+    .replace(/Ç/g, "C")
+    .trim();
 }
 
 /**
- * Central registry of all events.
- * Add one entry per event/discipline/category combination.
+ * Given a normalized event name (from the schedule), returns the Drive XLSX
+ * filename base, or undefined if the event has no detail page.
  *
- * TODO: Replace PLACEHOLDER_SPREADSHEET_ID values with real spreadsheet IDs.
+ * Exact match only — no prefix guessing to avoid "100 Metre" matching
+ * "100 Metre Engelli".
  */
-export const EVENT_CONFIGS: EventConfig[] = [
-  {
-    slug: "100m-erkekler",
-    title: "100m Erkekler",
-    day: 1,
-    scheduledTime: "11:20",
-    round: "Seçmeler",
-    category: "Erkekler",
-    spreadsheetId: "PLACEHOLDER_SPREADSHEET_ID",
-    sheetName: "Erkekler",
-    heats: [
-      { heat: 1, range: "Erkekler!A2:F20" },
-      { heat: 2, range: "Erkekler!H2:M20" },
-    ],
-  },
-  {
-    slug: "100m-kadinlar",
-    title: "100m Kadınlar",
-    day: 1,
-    scheduledTime: "11:40",
-    round: "Seçmeler",
-    category: "Kadınlar",
-    spreadsheetId: "PLACEHOLDER_SPREADSHEET_ID",
-    sheetName: "Kadınlar",
-    heats: [
-      { heat: 1, range: "Kadınlar!A2:F20" },
-    ],
-  },
-  {
-    slug: "400m-erkekler",
-    title: "400m Erkekler",
-    day: 1,
-    scheduledTime: "13:00",
-    round: "Seçmeler",
-    category: "Erkekler",
-    spreadsheetId: "PLACEHOLDER_SPREADSHEET_ID",
-    sheetName: "Erkekler",
-    heats: [
-      { heat: 1, range: "Erkekler!A2:F20" },
-      { heat: 2, range: "Erkekler!H2:M20" },
-    ],
-  },
-  {
-    slug: "uzun-atlama-erkekler",
-    title: "Uzun Atlama Erkekler",
-    day: 2,
-    scheduledTime: "10:00",
-    round: "Final",
-    category: "Erkekler",
-    spreadsheetId: "PLACEHOLDER_SPREADSHEET_ID",
-    sheetName: "Erkekler",
-    heats: [
-      { heat: 1, range: "Erkekler!A2:F30" },
-    ],
-  },
-];
+export function getDriveFileBase(eventName: string): string | undefined {
+  const key = normalizeTurkish(eventName).replace(/\s+/g, " ");
+  // Exact match
+  if (EVENT_NAME_TO_DRIVE_FILE[key]) return EVENT_NAME_TO_DRIVE_FILE[key];
+  // Also try collapsing spaces (handles "100METRE" edge cases)
+  const compacted = key.replace(/\s+/g, "");
+  for (const [k, v] of Object.entries(EVENT_NAME_TO_DRIVE_FILE)) {
+    if (normalizeTurkish(k).replace(/\s+/g, "") === compacted) return v;
+  }
+  return undefined;
+}
 
-/** Look up a single event config by slug. Returns undefined if not found. */
-export function getEventConfig(slug: string): EventConfig | undefined {
-  return EVENT_CONFIGS.find((e) => e.slug === slug);
+/**
+ * Keywords that identify the gender/category within a sheet name.
+ * Used to select the correct sheet from an XLSX file.
+ */
+export const GENDER_KEYWORDS: Record<string, string[]> = {
+  erkek:  ["erkek", "men"],
+  kadin:  ["kadın", "kadin", "women"],
+  karma:  ["karma", "mixed"],
+};
+
+/**
+ * Given a category string from the schedule (e.g. "Erkek", "Kadın", "KARMA"),
+ * returns the gender key used in slug generation ("erkek" | "kadin" | "karma").
+ */
+export function getCategoryKey(category: string): string {
+  const lower = category.toLowerCase();
+  if (lower.includes("kadın") || lower.includes("kadin") || lower.includes("women")) return "kadin";
+  if (lower.includes("karma") || lower.includes("mixed")) return "karma";
+  return "erkek"; // default / "Erkek"
 }

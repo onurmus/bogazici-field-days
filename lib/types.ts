@@ -42,6 +42,41 @@ export interface NormalizedEvent {
   heats: Heat[];
 }
 
+/** A single attempt in a field event (jump or throw) */
+export interface FieldAttempt {
+  /** Distance string: "7.88", "X", or "" (not yet attempted) */
+  value: string;
+  /** Wind reading — only present for jump events */
+  wind?: string;
+}
+
+/** A single athlete's result row in a field event */
+export interface FieldAthleteResult {
+  rank: string;        // final ranking ("1", "2"…) — may be "" before results
+  entryOrder: string;  // start-list order (SIRA NO)
+  bib: string;
+  athleteName: string;
+  team: string;
+  attempts: FieldAttempt[];
+  best: string;        // best valid distance (SONUÇ col)
+  bestWind?: string;   // wind for best jump (RÜZGAR col, jumps only)
+}
+
+/** A normalized field event (jumps + throws) */
+export interface NormalizedFieldEvent {
+  slug: string;
+  title: string;
+  day: 1 | 2;
+  scheduledTime: string;
+  round: string;
+  category: string;
+  status: EventStatus;
+  /** true = long/triple jump → show wind; false = throws */
+  isJump: boolean;
+  attemptCount: number;
+  results: FieldAthleteResult[];
+}
+
 /** A lightweight event summary used on the schedule/home page */
 export interface ScheduleEntry {
   slug: string;

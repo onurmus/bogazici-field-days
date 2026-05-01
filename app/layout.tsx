@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -33,7 +34,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
         />
       </head>
-      <body className="min-h-screen bg-[#f5f0e8]">{children}</body>
+      <body className="min-h-screen bg-[#f5f0e8]">
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

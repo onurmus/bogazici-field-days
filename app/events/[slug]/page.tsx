@@ -1,14 +1,21 @@
 // ---------------------------------------------------------------------------
 // Event detail page (Server Component)
 // URL: /events/[slug]
+//
+// Branches automatically:
+//   • Track events (sprints, distance, hurdles, relay) → EventDetailPage (heats)
+//   • Field events (jumps, throws) → FieldEventDetailPage (attempt table)
 // ---------------------------------------------------------------------------
 
 import { notFound } from "next/navigation";
-import { getEventConfig } from "@/lib/eventConfig";
-import { getMockEvent } from "@/lib/normalizeEvent";
-import EventHeader from "@/components/EventHeader";
-import HeatCard from "@/components/HeatCard";
-import ResultsTable from "@/components/ResultsTable";
+import { discoverEvent } from "@/lib/discoverEvent";
+import { fetchXlsxSheet } from "@/lib/googleSheets";
+import { normalizeEventFromXlsx, getMockEvent } from "@/lib/normalizeEvent";
+import { normalizeFieldEvent, getMockFieldEvent } from "@/lib/normalizeFieldEvent";
+import TopNav from "@/components/TopNav";
+import Footer from "@/components/Footer";
+import EventDetailPage from "@/components/EventDetailPage";
+import FieldEventDetailPage from "@/components/FieldEventDetailPage";
 
 // Revalidate every 30 seconds so results appear quickly
 export const revalidate = 30;
@@ -19,46 +26,52 @@ interface PageProps {
 
 export default async function EventPage({ params }: PageProps) {
   const { slug } = await params;
-  const config = getEventConfig(slug);
 
-  if (!config) {
+  // Discover the Drive file + schedule metadata dynamically
+  const discovered = await discoverEvent(slug).catch((err) => {
+    console.error(`[EventPage/${slug}] discoverEvent failed:`, err);
+    return null;
+  });
+
+  if (!discovered) {
     notFound();
   }
 
-  // TODO: Replace with live data once Google Sheets is connected:
-  // const heatRows = await fetchSheetRangesBatch(config.spreadsheetId, config.heats.map(h => h.range));
-  // const event = normalizeEvent(config, heatRows);
-  const event = getMockEvent(config);
+  const now = new Date();
+  const updatedAt = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-  const hasResults = event.heats
-    .flatMap((h) => h.athletes)
-    .some((a) => a.result !== "");
+  // ── Field events (jumps + throws) ──────────────────────────────────────
+  if (discovered.isField) {
+    let fieldEvent = getMockFieldEvent(discovered.scheduleEntry);
+    try {
+      const rows = await fetchXlsxSheet(discovered.driveFileId, discovered.heatsSheet);
+      fieldEvent = normalizeFieldEvent(discovered.scheduleEntry, rows);
+    } catch (err) {
+      console.error(`[EventPage/${slug}] Failed to load field XLSX:`, err);
+    }
+    return (
+      <>
+        <TopNav />
+        <FieldEventDetailPage event={fieldEvent} updatedAt={updatedAt} />
+        <Footer />
+      </>
+    );
+  }
+
+  // ── Track events (heats) ───────────────────────────────────────────────
+  let event = getMockEvent(discovered.scheduleEntry);
+  try {
+    const rows = await fetchXlsxSheet(discovered.driveFileId, discovered.heatsSheet);
+    event = normalizeEventFromXlsx(discovered.scheduleEntry, rows);
+  } catch (err) {
+    console.error(`[EventPage/${slug}] Failed to load XLSX heats:`, err);
+  }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <EventHeader event={event} />
-
-      {/* Seriler (Heats) */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
-          Seriler
-        </h2>
-        <div className="flex flex-col gap-4">
-          {event.heats.map((heat) => (
-            <HeatCard key={heat.heat} heat={heat} />
-          ))}
-        </div>
-      </section>
-
-      {/* Sonuçlar (Results) */}
-      {hasResults && (
-        <section>
-          <h2 className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
-            Genel Sıralama
-          </h2>
-          <ResultsTable heats={event.heats} />
-        </section>
-      )}
-    </main>
+    <>
+      <TopNav />
+      <EventDetailPage event={event} updatedAt={updatedAt} />
+      <Footer />
+    </>
   );
 }

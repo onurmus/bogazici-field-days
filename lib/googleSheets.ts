@@ -104,12 +104,7 @@ export async function fetchSheetNames(spreadsheetId: string): Promise<string[]> 
 // Drive API (XLSX files)
 // ---------------------------------------------------------------------------
 
-/** In-process cache so we don't re-download the same file within one request */
-const xlsxCache = new Map<string, XLSX.WorkBook>();
-
 async function downloadWorkbook(fileId: string): Promise<XLSX.WorkBook> {
-  if (xlsxCache.has(fileId)) return xlsxCache.get(fileId)!;
-
   const drive = getDriveClient();
   const res = await drive.files.get(
     { fileId, alt: "media" },
@@ -119,7 +114,6 @@ async function downloadWorkbook(fileId: string): Promise<XLSX.WorkBook> {
     type: "buffer",
     cellDates: false,
   });
-  xlsxCache.set(fileId, workbook);
   return workbook;
 }
 
@@ -182,6 +176,44 @@ export async function fetchXlsxSheetsBatch(
       })
     );
   });
+}
+
+// ---------------------------------------------------------------------------
+// Drive folder listing
+// ---------------------------------------------------------------------------
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+}
+
+/**
+ * Lists all non-trashed files directly inside a Google Drive folder.
+ * Useful for auto-discovering event XLSX files without hardcoding their IDs.
+ */
+export async function listDriveFolder(folderId: string): Promise<DriveFile[]> {
+  const drive = getDriveClient();
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: "files(id, name, mimeType)",
+    orderBy: "name",
+    pageSize: 100,
+  });
+  return (res.data.files ?? []).map((f) => ({
+    id: f.id ?? "",
+    name: f.name ?? "",
+    mimeType: f.mimeType ?? "",
+  }));
+}
+
+/**
+ * Returns the sheet/tab names inside an XLSX Drive file without reading cell data.
+ * Useful for event discovery when building EventConfig entries dynamically.
+ */
+export async function fetchXlsxSheetNames(fileId: string): Promise<string[]> {
+  const workbook = await downloadWorkbook(fileId);
+  return workbook.SheetNames;
 }
 
 // ---------------------------------------------------------------------------

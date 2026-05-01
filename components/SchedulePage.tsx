@@ -96,12 +96,6 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
         <section className="mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <div
-                className="inline-block bg-zinc-900 text-white px-4 py-1 neo-border neo-shadow-yellow text-4xl font-black mb-4 uppercase italic"
-                style={{ fontFamily: "var(--font-space-grotesk)" }}
-              >
-                BÜ
-              </div>
               <h1
                 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none mb-2"
                 style={{ fontFamily: "var(--font-space-grotesk)" }}
@@ -127,7 +121,7 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
         </section>
 
         {/* ── Bento Stats ── */}
-        <section className="mb-16">
+        {/* <section className="mb-16">
           <h2
             className="text-3xl md:text-4xl font-black uppercase mb-8 border-b-8 border-zinc-900 inline-block"
             style={{ fontFamily: "var(--font-space-grotesk)" }}
@@ -135,7 +129,6 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
             Bugünkü Yarışlar
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Total */}
             <div className="bg-zinc-900 text-white p-8 neo-border neo-shadow-blue flex flex-col justify-between min-h-[140px]">
               <span className="text-sm font-bold uppercase tracking-widest opacity-80" style={{ fontFamily: "var(--font-space-grotesk)" }}>
                 Toplam Branş
@@ -144,7 +137,6 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
                 {String(totalCount).padStart(2, "0")}
               </span>
             </div>
-            {/* Finished */}
             <div className="bg-blue-600 text-white p-8 neo-border neo-shadow flex flex-col justify-between min-h-[140px]">
               <span className="text-sm font-bold uppercase tracking-widest opacity-80" style={{ fontFamily: "var(--font-space-grotesk)" }}>
                 Sonuçlanan Branş
@@ -153,7 +145,6 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
                 {String(finishedCount).padStart(2, "0")}
               </span>
             </div>
-            {/* Next event */}
             <div className="bg-yellow-400 text-zinc-900 p-8 neo-border neo-shadow flex flex-col justify-between min-h-[140px]">
               <span className="text-sm font-bold uppercase tracking-widest opacity-80" style={{ fontFamily: "var(--font-space-grotesk)" }}>
                 Sıradaki Yarış
@@ -170,7 +161,7 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
               )}
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* ── Controls ── */}
         <section className="mb-12 space-y-6">
@@ -257,7 +248,7 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
         </div>
 
         {/* ── Banner ── */}
-        <section className="mt-20">
+        {/* <section className="mt-20">
           <div className="neo-border neo-shadow-yellow bg-zinc-900 overflow-hidden relative min-h-[280px] flex items-center">
             <div className="relative z-10 p-8 md:p-16 max-w-2xl">
               <h2
@@ -276,7 +267,7 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
               </button>
             </div>
           </div>
-        </section>
+        </section> */}
       </main>
     </div>
   );

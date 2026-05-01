@@ -26,6 +26,7 @@
 
 import type { ScheduleEntry, EventStatus } from "./types";
 import type { SheetRow } from "./googleSheets";
+import { getDriveFileBase, getCategoryKey } from "./eventConfig";
 
 export const SCHEDULE_FILE_ID = "1nnIwiViEq_Ri41gzAf9KY32NKf8U1fW6";
 export const DAY1_SHEET_NAME = "1. Gün Saatli Program";
@@ -66,9 +67,18 @@ function normalizeEventName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
 
-/** Build a URL-safe slug from event name + category */
-function makeSlug(eventName: string, category: string): string {
-  const base = `${eventName} ${category}`
+/** Format the raw category string into a Turkish plural display label */
+function formatCategory(category: string): string {
+  const c = category.trim().toLowerCase();
+  if (c === "erkek") return "Erkekler";
+  if (c === "kadın" || c === "kadin") return "Kadınlar";
+  if (c === "karma") return "Karma";
+  // Capitalise whatever came through unchanged
+  return category.trim().charAt(0).toUpperCase() + category.trim().slice(1);
+}
+
+function slugify(text: string): string {
+  return text
     .toLowerCase()
     .replace(/ş/g, "s")
     .replace(/ı/g, "i")
@@ -78,7 +88,26 @@ function makeSlug(eventName: string, category: string): string {
     .replace(/ç/g, "c")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return base;
+}
+
+/**
+ * Build a URL-safe slug from event name + category.
+ *
+ * If the event name maps to a Drive file we use a stable slug derived from
+ * the Drive filename base + gender key (e.g. "100m-erkekler"). Otherwise we
+ * fall back to slugifying the raw event name + category.
+ */
+function makeSlug(eventName: string, category: string): string {
+  const fileBase = getDriveFileBase(eventName);
+  if (fileBase) {
+    // Stable slug: file-base + gender key
+    // e.g. "100m" + "erkek" → "100m-erkekler"
+    const catKey = getCategoryKey(category);
+    const genderSuffix = catKey === "kadin" ? "kadinlar" : catKey === "karma" ? "karma" : "erkekler";
+    return `${slugify(fileBase)}-${genderSuffix}`;
+  }
+  // Fallback: slugify raw text
+  return slugify(`${eventName} ${category}`);
 }
 
 /**
@@ -101,10 +130,10 @@ export function normalizeScheduleRows(
       groups.set(key, {
         entry: {
           slug: makeSlug(row.eventName, row.category),
-          title: `${row.eventName}${row.category ? " " + row.category : ""}`,
+          title: row.category ? `${row.eventName} ${formatCategory(row.category)}` : row.eventName,
           day,
           scheduledTime: row.raceTime || row.areaTime,
-          round: "Seçmeler", // default; can be overridden from config
+          round: "Seçmeler",
           category: row.category,
           status,
           heatCount: 0,
@@ -134,17 +163,7 @@ export function normalizeScheduleRows(
 // Mock fallback (used when Google Drive is not reachable in local dev)
 // ---------------------------------------------------------------------------
 
-import { EVENT_CONFIGS } from "./eventConfig";
-
 export function getMockSchedule(): ScheduleEntry[] {
-  return EVENT_CONFIGS.map((cfg) => ({
-    slug: cfg.slug,
-    title: cfg.title,
-    day: cfg.day,
-    scheduledTime: cfg.scheduledTime,
-    round: cfg.round,
-    category: cfg.category,
-    status: "Yaklaşan" as const,
-    heatCount: cfg.heats.length,
-  }));
+  // Return a minimal placeholder — real data always comes from Drive.
+  return [];
 }

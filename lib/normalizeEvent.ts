@@ -1,149 +1,174 @@
 // ---------------------------------------------------------------------------
-// Event normalizer
+// Event normalizer for XLSX-based event files
 //
-// Converts raw Google Sheets rows (SheetRow[][]) into a NormalizedEvent.
+// XLSX structure (e.g. "100m Erkek Seçme" sheet):
+//   Row 0   : Competition title header
+//   Row 2   : Race name (col 2)
+//   Row 3   : Category (col 2)
+//   Row 4   : "1. SERİ" (col 0) + "6.SERİ" (col 8)  ← heat-pair header
+//   Row 5   : Column headers (Kulvar No, Göğüs No, Doğum Tarihi, Name, Team,
+//             Derece, Seri Geliş) — repeated for right heat at col 8
+//   Row 6+  : Athlete data (same layout as col headers)
+//   …repeated for each heat pair (2. SERİ / 7.SERİ etc.)
 //
-// Column convention (0-based index within a heat range):
-//   0 → lane
-//   1 → bib
-//   2 → athleteName
-//   3 → team
-//   4 → result
-//   5 → note
-//
-// Rank is computed server-side by sorting on result after normalization.
+// Columns within each 7-column block (left at offset 0, right at offset 8):
+//   +0 : Kulvar No  (lane)
+//   +1 : Göğüs No  (bib)
+//   +2 : Doğum Tarihi (birth date — not displayed)
+//   +3 : Adı ve Soyadı (athlete name)
+//   +4 : Takımı / Tasnif Statüsü (team)
+//   +5 : Derece (result)
+//   +6 : Seri Geliş (heat rank)
 // ---------------------------------------------------------------------------
 
-import type { Athlete, Heat, NormalizedEvent, EventStatus } from "./types";
-import type { EventConfig } from "./eventConfig";
+import type { Athlete, Heat, NormalizedEvent, EventStatus, ResultNote, ScheduleEntry } from "./types";
 import type { SheetRow } from "./googleSheets";
 
+// ---------------------------------------------------------------------------
+// XLSX heat-sheet parser
+// ---------------------------------------------------------------------------
+
+const LEFT_OFFSET = 0;
+const RIGHT_OFFSET = 8;
+
 /**
- * Normalizes raw sheet data for a single heat into a Heat object.
+ * Parses a "Seçme" (qualifying heats) XLSX sheet and returns a sorted array
+ * of Heat objects, one per heat.
  *
- * @param heatNumber  1-based heat index.
- * @param rows        Raw rows from Google Sheets for this heat's range.
+ * Heats are laid out in pairs side-by-side (left/right).
+ * A heat-pair block starts with a row whose col-0 matches "X. SERİ".
  */
-export function normalizeHeat(heatNumber: number, rows: SheetRow[]): Heat {
-  const athletes: Athlete[] = rows
-    .filter((row) => row.length > 0 && row[0]?.trim() !== "")
+export function parseXlsxSeçmeSheet(rows: SheetRow[]): Heat[] {
+  const heats: Heat[] = [];
+
+  // Find every row that starts a heat pair (col 0 = "X. SERİ" or "X.SERİ")
+  const blockStarts: number[] = [];
+  rows.forEach((row, i) => {
+    const cell = String(row[LEFT_OFFSET] ?? "").trim();
+    if (/^\d+\.?\s*SERİ$/i.test(cell)) blockStarts.push(i);
+  });
+
+  blockStarts.forEach((start, blockIdx) => {
+    const end = blockStarts[blockIdx + 1] ?? rows.length;
+    const pairHeaderRow = rows[start];
+
+    // Extract heat numbers from the pair header
+    const leftLabel = String(pairHeaderRow[LEFT_OFFSET] ?? "").trim();
+    const leftNum = parseInt(leftLabel.match(/\d+/)?.[0] ?? "0", 10);
+
+    const rightLabel = String(pairHeaderRow[RIGHT_OFFSET] ?? "").trim();
+    const rightMatch = rightLabel.match(/\d+/);
+    const rightNum = rightMatch ? parseInt(rightMatch[0], 10) : 0;
+
+    // Athletes occupy rows from start+2 onward (skip pair header + col headers)
+    const athleteRows = rows.slice(start + 2, end);
+
+    // Left heat
+    const leftAthletes = extractAthletes(athleteRows, LEFT_OFFSET);
+    if (leftNum > 0 && leftAthletes.length > 0) {
+      heats.push({ heat: leftNum, athletes: leftAthletes });
+    }
+
+    // Right heat
+    if (rightNum > 0) {
+      const rightAthletes = extractAthletes(athleteRows, RIGHT_OFFSET);
+      if (rightAthletes.length > 0) {
+        heats.push({ heat: rightNum, athletes: rightAthletes });
+      }
+    }
+  });
+
+  // Return heats in ascending order
+  return heats.sort((a, b) => a.heat - b.heat);
+}
+
+function extractAthletes(rows: SheetRow[], offset: number): Athlete[] {
+  return rows
+    .filter((row) => {
+      const lane = String(row[offset] ?? "").trim();
+      return lane !== "" && !isNaN(Number(lane));
+    })
+    .filter((row) => String(row[offset + 3] ?? "").trim() !== "") // must have a name
     .map((row) => ({
-      lane: row[0] ?? "",
-      bib: row[1] ?? "",
-      athleteName: row[2] ?? "",
-      team: row[3] ?? "",
-      result: row[4] ?? "",
-      rank: "", // computed below
-      note: row[5] ?? "",
+      lane: String(row[offset]).trim(),
+      bib: String(row[offset + 1] ?? "").trim(),
+      athleteName: String(row[offset + 3] ?? "").trim(),
+      team: String(row[offset + 4] ?? "").trim(),
+      result: String(row[offset + 5] ?? "").trim(),
+      rank: String(row[offset + 6] ?? "").trim(),
+      note: "" as ResultNote,
     }));
+}
 
-  // Assign ranks based on result value (lower = better for track, higher = better for field)
-  // TODO: Adjust sorting direction per discipline (track: ascending, field: descending)
-  const ranked = assignRanks(athletes);
+// ---------------------------------------------------------------------------
+// NormalizedEvent builder
+// ---------------------------------------------------------------------------
 
+/**
+ * Builds a NormalizedEvent from a live ScheduleEntry (metadata) + raw XLSX rows (heats).
+ * All metadata comes from the schedule — nothing is hardcoded.
+ */
+export function normalizeEventFromXlsx(
+  entry: ScheduleEntry,
+  heatsRows: SheetRow[]
+): NormalizedEvent {
+  const heats = parseXlsxSeçmeSheet(heatsRows);
+  const status = deriveEventStatus(heats);
   return {
-    heat: heatNumber,
-    athletes: ranked,
+    slug: entry.slug,
+    title: entry.title,
+    day: entry.day,
+    scheduledTime: entry.scheduledTime,
+    round: entry.round,
+    category: entry.category,
+    status,
+    heats,
   };
 }
 
-/**
- * Assigns rank strings to athletes based on their result values.
- * Athletes with empty or non-numeric results (DNS, DNF, DQ) are ranked last.
- */
-function assignRanks(athletes: Athlete[]): Athlete[] {
-  const withResult = athletes.filter(
-    (a) => a.result !== "" && isNumericResult(a.result)
-  );
-  const withoutResult = athletes.filter(
-    (a) => a.result === "" || !isNumericResult(a.result)
-  );
-
-  // Sort ascending (track events) — field events will need descending
-  withResult.sort((a, b) => parseResult(a.result) - parseResult(b.result));
-
-  return [
-    ...withResult.map((a, i) => ({ ...a, rank: String(i + 1) })),
-    ...withoutResult.map((a) => ({ ...a, rank: "" })),
-  ];
-}
-
-function isNumericResult(result: string): boolean {
-  return !isNaN(parseFloat(result.replace(",", ".")));
-}
-
-function parseResult(result: string): number {
-  return parseFloat(result.replace(",", "."));
-}
+// ---------------------------------------------------------------------------
+// Status derivation
+// ---------------------------------------------------------------------------
 
 /**
- * Determines the display status of an event based on its heats data.
+ * Derives the display status of an event based on athlete result data.
  */
 export function deriveEventStatus(heats: Heat[]): EventStatus {
   const allAthletes = heats.flatMap((h) => h.athletes);
   if (allAthletes.length === 0) return "Yaklaşan";
 
-  const hasResults = allAthletes.some((a) => a.result !== "");
-  const allHaveResults = allAthletes
-    .filter((a) => !["DNS", "DNF", "DQ"].includes(a.note))
-    .every((a) => a.result !== "");
+  const scoringAthletes = allAthletes.filter(
+    (a) => !["DNS", "DNF", "DQ"].includes(a.note)
+  );
+  const hasAnyResult = allAthletes.some((a) => a.result !== "");
+  const allHaveResults = scoringAthletes.every((a) => a.result !== "");
 
-  if (allHaveResults) return "Sonuçlandı";
-  if (hasResults) return "Sonuç bekleniyor";
+  if (scoringAthletes.length > 0 && allHaveResults) return "Sonuçlandı";
+  if (hasAnyResult) return "Sonuç bekleniyor";
   return "Seriler hazır";
 }
 
-/**
- * Assembles a fully normalized event from a config and per-heat raw rows.
- *
- * @param config  The event's static configuration.
- * @param heatRows  Array of raw row sets, one per heat, in config order.
- */
-export function normalizeEvent(
-  config: EventConfig,
-  heatRows: SheetRow[][]
-): NormalizedEvent {
-  const heats: Heat[] = config.heats.map((heatCfg, i) =>
-    normalizeHeat(heatCfg.heat, heatRows[i] ?? [])
-  );
-
-  return {
-    slug: config.slug,
-    title: config.title,
-    day: config.day,
-    scheduledTime: config.scheduledTime,
-    round: config.round,
-    category: config.category,
-    status: deriveEventStatus(heats),
-    heats,
-  };
-}
-
 // ---------------------------------------------------------------------------
-// Mock data factory — used until Google Sheets is connected
+// Mock fallback (used when Drive is unavailable)
 // ---------------------------------------------------------------------------
 
-export function getMockEvent(config: EventConfig): NormalizedEvent {
-  const mockAthletes: Athlete[] = [
-    { lane: "1", bib: "101", athleteName: "Ahmet Yılmaz", team: "Boğaziçi Üniversitesi", result: "11.23", rank: "2", note: "" },
-    { lane: "2", bib: "102", athleteName: "Mehmet Demir", team: "İTÜ", result: "10.94", rank: "1", note: "Q" },
-    { lane: "3", bib: "103", athleteName: "Ali Kaya", team: "ODTÜ", result: "11.45", rank: "3", note: "" },
-    { lane: "4", bib: "104", athleteName: "Hasan Çelik", team: "Bilkent", result: "", rank: "", note: "DNS" },
-  ];
-
-  const heats: Heat[] = config.heats.map((heatCfg, i) => ({
-    heat: heatCfg.heat,
-    athletes: mockAthletes.map((a) => ({ ...a, lane: String(i * 4 + parseInt(a.lane)) })),
-  }));
-
+export function getMockEvent(entry: ScheduleEntry): NormalizedEvent {
   return {
-    slug: config.slug,
-    title: config.title,
-    day: config.day,
-    scheduledTime: config.scheduledTime,
-    round: config.round,
-    category: config.category,
+    slug: entry.slug,
+    title: entry.title,
+    day: entry.day,
+    scheduledTime: entry.scheduledTime,
+    round: entry.round,
+    category: entry.category,
     status: "Seriler hazır",
-    heats,
+    heats: [
+      {
+        heat: 1,
+        athletes: [
+          { lane: "1", bib: "101", athleteName: "Sporcu Adı", team: "Üniversite", result: "", rank: "", note: "" },
+          { lane: "2", bib: "102", athleteName: "Sporcu Adı", team: "Üniversite", result: "", rank: "", note: "" },
+        ],
+      },
+    ],
   };
 }
