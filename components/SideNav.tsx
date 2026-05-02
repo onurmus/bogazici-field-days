@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SIDE_LINKS = [
-  { href: "/", icon: "calendar_today", label: "1. GÜN" },
+  { href: "/gun/1", icon: "calendar_today", label: "1. GÜN" },
   { href: "/gun/2", icon: "event_repeat", label: "2. GÜN" },
   { href: "/program", icon: "calendar_month", label: "PROGRAM" },
 //   { href: "/rekorlar", icon: "emoji_events", label: "REKORLAR" },

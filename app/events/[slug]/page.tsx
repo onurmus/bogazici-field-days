@@ -13,11 +13,13 @@ import { discoverEvent } from "@/lib/discoverEvent";
 import { fetchXlsxSheet } from "@/lib/googleSheets";
 import { normalizeEventFromXlsx, getMockEvent } from "@/lib/normalizeEvent";
 import { normalizeFieldEvent, getMockFieldEvent } from "@/lib/normalizeFieldEvent";
+import { normalizeHighJumpEvent, getMockHighJumpEvent } from "@/lib/normalizeHighJumpEvent";
 import { normalizeRelayEvent, getMockRelayEvent } from "@/lib/normalizeRelayEvent";
 import TopNav from "@/components/TopNav";
 import Footer from "@/components/Footer";
 import EventDetailPage from "@/components/EventDetailPage";
 import FieldEventDetailPage from "@/components/FieldEventDetailPage";
+import HighJumpEventDetailPage from "@/components/HighJumpEventDetailPage";
 import RelayEventDetailPage from "@/components/RelayEventDetailPage";
 
 // Revalidate every 30 seconds so results appear quickly
@@ -42,7 +44,23 @@ export default async function EventPage({ params }: PageProps) {
 
   const now = new Date();
   const updatedAt = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
+  // ── High jump events ────────────────────────────────────────────────────
+  if (discovered.isHighJump) {
+    let hjEvent = getMockHighJumpEvent(discovered.scheduleEntry);
+    try {
+      const rows = await fetchXlsxSheet(discovered.driveFileId, discovered.heatsSheet);
+      hjEvent = normalizeHighJumpEvent(discovered.scheduleEntry, rows);
+    } catch (err) {
+      console.error(`[EventPage/${slug}] Failed to load high jump XLSX:`, err);
+    }
+    return (
+      <>
+        <TopNav />
+        <HighJumpEventDetailPage event={hjEvent} updatedAt={updatedAt} />
+        <Footer />
+      </>
+    );
+  }
   // ── Field events (jumps + throws) ──────────────────────────────────────
   if (discovered.isField) {
     // Mixed-gender (Kadın-Erkek): render Kadınlar and Erkekler as two sections

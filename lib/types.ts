@@ -64,6 +64,40 @@ export interface FieldAthleteResult {
   bestWind?: string;   // wind for best jump (RÜZGAR col, jumps only)
 }
 
+/** One height group in a high jump result */
+export interface HighJumpHeight {
+  /** e.g. "1.45", "1.80" */
+  height: string;
+  /** Up to 3 attempt values: "O", "X", "-", or "" (not attempted) */
+  attempts: string[];
+}
+
+/** A single athlete's result row in a high jump event */
+export interface HighJumpAthleteResult {
+  rank: string;
+  entryOrder: string;
+  bib: string;
+  athleteName: string;
+  team: string;
+  heights: HighJumpHeight[];
+  /** Best cleared height from the Sonuç column */
+  best: string;
+}
+
+/** A normalized high jump event */
+export interface NormalizedHighJumpEvent {
+  slug: string;
+  title: string;
+  day: 1 | 2;
+  scheduledTime: string;
+  round: string;
+  category: string;
+  status: EventStatus;
+  /** Ordered list of all height labels from the sheet */
+  heights: string[];
+  results: HighJumpAthleteResult[];
+}
+
 /** A normalized field event (jumps + throws) */
 export interface NormalizedFieldEvent {
   slug: string;

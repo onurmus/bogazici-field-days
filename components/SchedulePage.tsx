@@ -7,6 +7,7 @@ import EventCard from "./EventCard";
 interface Props {
   schedule: ScheduleEntry[];
   lastUpdated?: string;
+  day: 1 | 2;
 }
 
 const FILTER_CATEGORIES = [
@@ -74,12 +75,11 @@ function nextEvent(entries: ScheduleEntry[]): ScheduleEntry | undefined {
   return entries.find((e) => e.status !== "Sonuçlandı");
 }
 
-export default function SchedulePage({ schedule, lastUpdated }: Props) {
-  const [activeDay, setActiveDay] = useState<1 | 2>(1);
+export default function SchedulePage({ schedule, lastUpdated, day }: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
 
-  const dayEntries = schedule.filter((e) => e.day === activeDay);
+  const dayEntries = schedule;
   const filtered = dayEntries.filter((e) => filterEntry(e, activeFilter, search));
   const grouped = groupByTime(filtered);
 
@@ -96,6 +96,15 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
         <section className="mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
+              <div className="inline-flex items-center gap-2 bg-yellow-400 neo-border px-4 py-1 mb-3">
+                <span className="material-symbols-outlined text-base">calendar_today</span>
+                <span
+                  className="text-sm font-black uppercase tracking-widest"
+                  style={{ fontFamily: "var(--font-space-grotesk)" }}
+                >
+                  {day}. Gün
+                </span>
+              </div>
               <h1
                 className="text-4xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none mb-2"
                 style={{ fontFamily: "var(--font-space-grotesk)" }}
@@ -166,24 +175,6 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
         {/* ── Controls ── */}
         <section className="mb-12 space-y-6">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-            {/* Day tabs */}
-            <div className="flex neo-border bg-white p-1 shrink-0">
-              {([1, 2] as const).map((day) => (
-                <button
-                  key={day}
-                  onClick={() => { setActiveDay(day); setActiveFilter("all"); }}
-                  className={
-                    activeDay === day
-                      ? "px-6 md:px-8 py-3 bg-zinc-900 text-white font-black uppercase text-base md:text-lg neo-border transition-colors"
-                      : "px-6 md:px-8 py-3 hover:bg-stone-200 font-black uppercase text-base md:text-lg transition-colors"
-                  }
-                  style={{ fontFamily: "var(--font-space-grotesk)" }}
-                >
-                  {day}. Gün
-                </button>
-              ))}
-            </div>
-
             {/* Search */}
             <div className="flex-1 w-full relative">
               <input

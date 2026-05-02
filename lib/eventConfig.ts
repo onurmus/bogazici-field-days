@@ -21,8 +21,8 @@
 /** Google Drive folder containing Day 1 event XLSX files */
 export const DAY1_FOLDER_ID = "1Nf4UAetwA28IZsoPixKLT_ELxJqndOOQ";
 
-/** Google Drive folder containing Day 2 event XLSX files (set when ready) */
-export const DAY2_FOLDER_ID = "";
+/** Google Drive folder containing Day 2 event XLSX files */
+export const DAY2_FOLDER_ID = "1V9MZ5-QDlAAtZcbMWN51DZjASG2N1ULT";
 
 /**
  * Maps normalized schedule event names (uppercase) to Drive XLSX filename
@@ -71,6 +71,52 @@ export const EVENT_NAME_TO_DRIVE_FILE: Record<string, string> = {
 };
 
 /**
+ * Maps normalized Day 2 event names (uppercase, Turkish chars stripped) to
+ * Drive XLSX filename bases in the Day 2 folder.
+ *
+ * Day 2 uses different filenames from Day 1 for several shared events
+ * (e.g. Day 1 "Disk" vs Day 2 "Disk Atma", Day 1 "Uzun Atlama" vs Day 2 "Uzun"),
+ * so a separate map is required.
+ */
+export const DAY2_EVENT_NAME_TO_DRIVE_FILE: Record<string, string> = {
+  // Track — sprints
+  "200 METRE":              "200m",
+  "800 METRE":              "800m",
+  "3000 METRE":             "3000m Kadın",
+  "5000 METRE":             "5000m Erkek",
+  // Hurdles
+  "400 METRE ENGELLI":      "400m Engel",
+  // Amateur track
+  "100 METRE AMATOR":       "100m Amatör",
+  "400 METRE AMATOR":       "400m Amatör",
+  // Field — jumps (Day 2 uses shorter filenames)
+  "UZUN ATLAMA":            "Uzun",
+  "UZUN ATLAMA AMATOR":     "Uzun Amatör",
+  "YUKSEK ATLAMA":          "Yüksek",
+  // Field — throws
+  "DISK ATMA":              "Disk Atma",
+};
+
+/**
+ * Lookup function for Day 2 Drive file bases.
+ * Must be used instead of getDriveFileBase() when the schedule entry is from Day 2.
+ */
+export function getDay2DriveFileBase(eventName: string): string | undefined {
+  const key = normalizeTurkish(eventName).replace(/\s+/g, " ");
+  return DAY2_EVENT_NAME_TO_DRIVE_FILE[key];
+}
+
+/**
+ * Drive file base names that correspond to high jump events.
+ * These get a dedicated HighJumpEventDetailPage with a height-matrix table.
+ * Checked BEFORE isField in the event page routing.
+ */
+export const HIGH_JUMP_EVENT_BASES = new Set([
+  "Yüksek Atlama", // Day 1 name (if used)
+  "Yüksek",        // Day 2 file base
+]);
+
+/**
  * Drive file base names that correspond to relay events (4x100, 4x400).
  * These are routed to RelayEventDetailPage instead of EventDetailPage.
  */
@@ -82,8 +128,10 @@ export const RELAY_EVENT_BASES = new Set([
 /**
  * Drive file base names that correspond to field events (throws & jumps).
  * These are routed to FieldEventDetailPage instead of EventDetailPage.
+ * Includes both Day 1 and Day 2 file base variants.
  */
 export const FIELD_EVENT_BASES = new Set([
+  // Day 1
   "Gülle Atma",
   "Gülle Atma Amatör",
   "Cirit",
@@ -92,6 +140,11 @@ export const FIELD_EVENT_BASES = new Set([
   "Üçadım",
   "Uzun Atlama",
   "Yüksek Atlama",
+  // Day 2 (different filename bases for same event types)
+  "Disk Atma",
+  "Uzun",
+  "Uzun Amatör",
+  "Yüksek",
 ]);
 
 /** Normalize Turkish characters for map key lookup */

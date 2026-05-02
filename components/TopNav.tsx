@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const NAV_LINKS = [
-  { href: "/", icon: "calendar_today", label: "1. Gün" },
+  { href: "/gun/1", icon: "calendar_today", label: "1. Gün" },
   { href: "/gun/2", icon: "event_repeat", label: "2. Gün" },
   { href: "/program", icon: "calendar_month", label: "Program" },
 //   { href: "/sonuclar", icon: "emoji_events", label: "Sonuçlar" },
