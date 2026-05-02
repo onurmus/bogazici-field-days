@@ -2,7 +2,7 @@ import TopNav from "@/components/TopNav";
 import SideNav from "@/components/SideNav";
 import Footer from "@/components/Footer";
 
-export const metadata = { title: "2. Gün – BÜ Field Days 2026" };
+export const metadata = { title: "2. Gün – BÜ  2026" };
 
 export default function Gun2Page() {
   return (

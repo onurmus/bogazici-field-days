@@ -15,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "BÜ Field Days – Yarışma Programı ve Sonuçları",
+  title: "BÜ Field Day – Yarışma Programı ve Sonuçları",
   description: "Boğaziçi Üniversitesi Atletizm Günleri canlı sonuçlar ve yarışma programı",
 };
 

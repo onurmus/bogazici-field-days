@@ -103,7 +103,7 @@ export default function SchedulePage({ schedule, lastUpdated }: Props) {
                 Boğaziçi Üniversitesi Atletizm Günleri
               </h1>
               <p className="text-lg md:text-2xl font-bold text-blue-600">
-                Field Days Yarışma Programı ve Sonuçları
+                Field Day Yarışma Programı ve Sonuçları
               </p>
             </div>
             <div className="flex flex-col items-start md:items-end gap-2 shrink-0">

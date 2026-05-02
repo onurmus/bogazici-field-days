@@ -34,7 +34,7 @@ export default function TopNav() {
             className="text-xl md:text-2xl font-black text-zinc-900 tracking-tighter uppercase"
             style={{ fontFamily: "var(--font-space-grotesk)" }}
           >
-            Boğaziçi Ünivesitesi FIELD Days - 2026
+            Boğaziçi Ünivesitesi FIELD Day - 2026
           </span>
           {/* Desktop nav */}
           <nav
@@ -94,7 +94,7 @@ export default function TopNav() {
       >
         {/* Drawer header */}
         <div className="flex items-center justify-between px-5 py-5 border-b-4 border-zinc-900">
-          <span className="font-black uppercase tracking-tighter text-lg">FIELD Days 2026</span>
+          <span className="font-black uppercase tracking-tighter text-lg">FIELD Day 2026</span>
           <button
             className="p-1 hover:bg-yellow-400 transition-colors active:scale-95"
             onClick={() => setMenuOpen(false)}
