@@ -38,7 +38,11 @@ const R_POINTS = 15;
 // Left-side column indices
 const L_LANE = 0;
 const L_BIB = 1;
+// col 2 = Doğum Tarihi (skipped)
+const L_NAMES = 3;
 const L_TEAM = 4;
+const L_RESULT = 5;
+const L_HEAT_RANK = 6;
 
 type Row = (string | number | null | undefined)[];
 
@@ -73,10 +77,22 @@ export function parseRelaySheet(rows: unknown[][]): {
     if (/^\d+$/.test(cell0) && currentHeat) {
       const teamName = str(row[L_TEAM]);
       if (teamName) {
+        // Bib numbers and names are stored as newline-separated strings in a
+        // single cell (one sub-value per relay leg).
+        const bibs = str(row[L_BIB]).split("\n").map((s) => s.trim()).filter(Boolean);
+        const names = str(row[L_NAMES]).split("\n").map((s) => s.trim()).filter(Boolean);
+        const runners = bibs.map((bib, i) => ({ bib, name: names[i] ?? "" }));
+        // If no bibs but names exist (edge case), still build runners from names
+        if (runners.length === 0 && names.length > 0) {
+          names.forEach((name) => runners.push({ bib: "", name }));
+        }
         const entry: RelayHeatEntry = {
           lane: cell0,
-          bib: str(row[L_BIB]),
+          bib: bibs.join(", "),
           teamName,
+          runners,
+          result: str(row[L_RESULT]),
+          heatRank: str(row[L_HEAT_RANK]),
         };
         currentHeat.entries.push(entry);
       }
@@ -104,7 +120,10 @@ function deriveStatus(
   heats: RelayHeat[]
 ): EventStatus {
   if (results.some((r) => r.time)) return "Sonuçlandı";
-  const hasEntries = heats.some((h) => h.entries.some((e) => e.teamName));
+  // Results may also live in the heat entries (left-side result column)
+  const heatEntries = heats.flatMap((h) => h.entries);
+  if (heatEntries.some((e) => e.result)) return "Sonuçlandı";
+  const hasEntries = heatEntries.some((e) => e.teamName);
   if (hasEntries) return "Seriler hazır";
   return "Yaklaşan";
 }

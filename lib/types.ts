@@ -26,6 +26,8 @@ export interface Athlete {
 /** A single heat/series within an event */
 export interface Heat {
   heat: number;
+  /** Optional display label — e.g. "Final A", "Final B". Shown instead of "N. Seri" when present. */
+  label?: string;
   scheduledTime?: string;
   athletes: Athlete[];
 }
@@ -90,8 +92,15 @@ export interface RelayTeamResult {
 /** A single lane entry in a relay start-list heat */
 export interface RelayHeatEntry {
   lane: string;
+  /** Comma-joined bib numbers (legacy / compat) */
   bib: string;
   teamName: string;
+  /** Individual runners in leg order */
+  runners: { bib: string; name: string }[];
+  /** Derece — finish time for this team */
+  result: string;
+  /** Seri Geliş — rank within the heat */
+  heatRank: string;
 }
 
 /** One heat in a relay start list */

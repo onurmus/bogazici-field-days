@@ -15,7 +15,7 @@ export default function HeatCard({ heat }: Props) {
           className="font-black text-2xl uppercase tracking-tight"
           style={{ fontFamily: "var(--font-space-grotesk)" }}
         >
-          {heat.heat}. Seri
+          {heat.label ?? `${heat.heat}. Seri`}
         </h2>
         <div className="flex items-center gap-3 shrink-0">
           {heat.scheduledTime && (

@@ -105,6 +105,62 @@ function extractAthletes(rows: SheetRow[], offset: number): Athlete[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Returns true when rows look like a final sheet (block headers say "Final A",
+ * "Final B", etc.) rather than a qualifying heats sheet ("1. SERİ", "2. SERİ").
+ */
+function isFinalSheet(rows: SheetRow[]): boolean {
+  return rows.some((row) =>
+    /^Final\s+[A-Z]\b/i.test(String(row[LEFT_OFFSET] ?? "").trim())
+  );
+}
+
+/**
+ * Parses a "Final" XLSX sheet where blocks are labelled "Final A", "Final B",
+ * etc. (instead of "1. SERİ", "2. SERİ" used in qualifying sheets).
+ *
+ * Sheet layout for each block:
+ *   Row N   : "Final A" (col 0) + optional rüzgar/results headers
+ *   Row N+1 : Column headers (Kulvar No, Göğüs No, …)
+ *   Row N+2+: Athlete data (same left-side column layout as seçme sheets)
+ *
+ * The right-side columns (col 8+) hold the SONUÇ LİSTESİ (results ranked by
+ * place) — we ignore those here and only parse the start-list on the left.
+ */
+export function parseXlsxFinalSheet(rows: SheetRow[]): Heat[] {
+  const heats: Heat[] = [];
+
+  // Find every row that starts a "Final X" block
+  const blockStarts: { rowIdx: number; label: string }[] = [];
+  rows.forEach((row, i) => {
+    const cell = String(row[LEFT_OFFSET] ?? "").trim();
+    const m = cell.match(/^(Final\s+[A-Z])\b/i);
+    if (m) blockStarts.push({ rowIdx: i, label: m[1] });
+  });
+
+  blockStarts.forEach(({ rowIdx, label }, blockIdx) => {
+    const endRow =
+      blockIdx + 1 < blockStarts.length
+        ? blockStarts[blockIdx + 1].rowIdx
+        : rows.length;
+
+    // Skip the block-header row (rowIdx) AND the column-header row (rowIdx+1)
+    const athleteRows = rows.slice(rowIdx + 2, endRow);
+    const athletes = extractAthletes(athleteRows, LEFT_OFFSET);
+
+    // Map "Final A" → 1, "Final B" → 2, etc.
+    const letterMatch = label.match(/([A-Z])$/i);
+    const heatNum = letterMatch
+      ? letterMatch[1].toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 1
+      : blockIdx + 1;
+
+    // Include the heat even when empty — show "no data yet" rather than hiding
+    heats.push({ heat: heatNum, label, athletes });
+  });
+
+  return heats;
+}
+
+/**
  * Builds a NormalizedEvent from a live ScheduleEntry (metadata) + raw XLSX rows (heats).
  * All metadata comes from the schedule — nothing is hardcoded.
  */
@@ -112,7 +168,9 @@ export function normalizeEventFromXlsx(
   entry: ScheduleEntry,
   heatsRows: SheetRow[]
 ): NormalizedEvent {
-  const heats = parseXlsxSeçmeSheet(heatsRows);
+  const heats = isFinalSheet(heatsRows)
+    ? parseXlsxFinalSheet(heatsRows)
+    : parseXlsxSeçmeSheet(heatsRows);
   const status = deriveEventStatus(heats);
   return {
     slug: entry.slug,
