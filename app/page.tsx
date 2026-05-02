@@ -20,7 +20,7 @@ export const revalidate = 60;
 
 export default async function Home() {
   let schedule = getMockSchedule();
-  const now = new Date();
+  const now = new Date(); // use GMT+3 timezone in display, but rely on server's local time for revalidation logic (simpler than dealing with timezone conversions here)
   const lastUpdated = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
   try {

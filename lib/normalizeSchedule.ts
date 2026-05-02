@@ -44,13 +44,13 @@ interface RawRow {
   category: string;     // col E
 }
 
-function parseRawRows(rows: SheetRow[]): RawRow[] {
+function parseRawRows(rows: SheetRow[], colOffset: number = 0): RawRow[] {
   return rows.slice(DATA_START_ROW).map((row) => ({
-    areaTime:  normalizeTime(row[0] ?? ""),
-    raceTime:  normalizeTime(row[1] ?? ""),
-    eventName: normalizeEventName(row[2] ?? ""),
-    heatLabel: (row[3] ?? "").trim(),
-    category:  (row[4] ?? "").trim(),
+    areaTime:  normalizeTime(row[colOffset + 0] ?? ""),
+    raceTime:  normalizeTime(row[colOffset + 1] ?? ""),
+    eventName: normalizeEventName(row[colOffset + 2] ?? ""),
+    heatLabel: (row[colOffset + 3] ?? "").trim(),
+    category:  (row[colOffset + 4] ?? "").trim(),
   }));
 }
 
@@ -113,13 +113,17 @@ function makeSlug(eventName: string, category: string): string {
 /**
  * Groups raw rows by (eventName, category) and produces ScheduleEntry objects.
  * Consecutive rows with the same (eventName, category) are merged into one entry.
+ *
+ * @param colOffset - Column offset for reading data (Day 2 stores its data in
+ *   columns G–K, i.e. offset 6, while Day 1 uses columns A–E, offset 0).
  */
 export function normalizeScheduleRows(
   rows: SheetRow[],
   day: 1 | 2,
-  status: EventStatus = "Yaklaşan"
+  status: EventStatus = "Yaklaşan",
+  colOffset: number = 0
 ): ScheduleEntry[] {
-  const rawRows = parseRawRows(rows).filter((r) => r.eventName !== "");
+  const rawRows = parseRawRows(rows, colOffset).filter((r) => r.eventName !== "");
 
   const groups: Map<string, { entry: ScheduleEntry; heatCount: number }> =
     new Map();
@@ -166,4 +170,49 @@ export function normalizeScheduleRows(
 export function getMockSchedule(): ScheduleEntry[] {
   // Return a minimal placeholder — real data always comes from Drive.
   return [];
+}
+
+// ---------------------------------------------------------------------------
+// Raw (ungrouped) rows — for tabular program display
+// ---------------------------------------------------------------------------
+
+/**
+ * A single row from the schedule sheet, preserved exactly for table rendering.
+ * Unlike ScheduleEntry, these are not grouped — each heat gets its own row.
+ */
+export interface RawScheduleRow {
+  /** Col A — Yarışma Alanı: warm-up/check-in area time */
+  areaTime: string;
+  /** Col B — Yarışma Saati: scheduled race start time */
+  raceTime: string;
+  /** Col C — Yarışma Adı: event name */
+  eventName: string;
+  /** Col D — Seri No: heat label (e.g. "1. Seri") */
+  heatLabel: string;
+  /** Col E — Kategori: gender/category */
+  category: string;
+  /** URL slug for the event detail page */
+  slug: string;
+}
+
+/**
+ * Returns flat (ungrouped) schedule rows for direct table display.
+ * Each heat in the spreadsheet becomes its own row — no merging.
+ *
+ * @param colOffset Column offset (0 for Day 1; inspect the sheet if Day 2 differs)
+ */
+export function getScheduleTableRows(
+  rows: SheetRow[],
+  colOffset: number = 0
+): RawScheduleRow[] {
+  return parseRawRows(rows, colOffset)
+    .filter((r) => r.eventName !== "")
+    .map((r) => ({
+      areaTime:  r.areaTime,
+      raceTime:  r.raceTime,
+      eventName: r.eventName,
+      heatLabel: r.heatLabel,
+      category:  r.category,
+      slug:      r.category ? makeSlug(r.eventName, r.category) : "",
+    }));
 }
