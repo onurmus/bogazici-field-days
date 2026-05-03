@@ -23,10 +23,8 @@ const RANK_POINTS_COLOR: Record<number, string> = {
 // Filter label banner
 // ---------------------------------------------------------------------------
 function filterLabel(day: DayFilter, gender: GenderFilter): string {
-  const dayPart =
-    day === "all" ? "1. GÜN + 2. GÜN" : `${day}. GÜN`;
-  const genderPart =
-    gender === "all" ? "GENEL TOPLAM" : gender === "erkek" ? "ERKEKLER" : "KADINLAR";
+  const dayPart = day === "all" ? "1. GÜN + 2. GÜN" : `${day}. GÜN`;
+  const genderPart = gender === "erkek" ? "ERKEKLER" : "KADINLAR";
   return `${genderPart} — ${dayPart}`;
 }
 
@@ -127,7 +125,7 @@ function LeaderboardRow({
 // ---------------------------------------------------------------------------
 export default function TeamResultsPage({ rows }: { rows: TeamResultRow[] }) {
   const [dayFilter, setDayFilter] = useState<DayFilter>("all");
-  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>("erkek");
 
   const standings = useMemo(
     () => buildTeamStandings(rows, dayFilter, genderFilter),
@@ -161,7 +159,6 @@ export default function TeamResultsPage({ rows }: { rows: TeamResultRow[] }) {
         </div>
         {/* Gender filter */}
         <div className="flex gap-3 overflow-x-auto pb-1">
-          <FilterChip active={genderFilter === "all"} onClick={() => setGenderFilter("all")}>TÜMÜ</FilterChip>
           <FilterChip active={genderFilter === "erkek"} onClick={() => setGenderFilter("erkek")}>ERKEKLER</FilterChip>
           <FilterChip active={genderFilter === "kadin"} onClick={() => setGenderFilter("kadin")}>KADINLAR</FilterChip>
         </div>
