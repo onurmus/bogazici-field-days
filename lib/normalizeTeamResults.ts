@@ -82,17 +82,42 @@ export function parseTeamResultsSheet(
   const headerIdx = findHeaderRow(rows);
   const headerRow = rows[headerIdx];
 
-  // Find total column: last column whose header contains "puan" or "toplam".
-  // Day-1 files end with "1. Gün Puan"; Day-2 files end with "Toplam Puan".
+  // Find total column — the day-specific puan column.
+  // Day-2 files have: … | "1. Gün Puan" | "2. Gün Puan" | "Toplam Puan"
+  // We use only the day-specific column so Day-1 points are not double-counted.
+  // Prefer "N. Gün Puan" matching the file's day; fallback to last puan/toplam column.
   let totalCol = -1;
-  for (let col = headerRow.length - 1; col >= 0; col--) {
+  const dayLabel = `${day}. gün puan`;
+  for (let col = 0; col < headerRow.length; col++) {
     const h = str(headerRow[col]).toLowerCase();
-    if (h.includes("puan") || h.includes("toplam")) {
+    if (h === dayLabel || h.includes(dayLabel)) {
       totalCol = col;
       break;
     }
   }
+  if (totalCol === -1) {
+    for (let col = headerRow.length - 1; col >= 0; col--) {
+      const h = str(headerRow[col]).toLowerCase();
+      if (h.includes("puan") || h.includes("toplam")) {
+        totalCol = col;
+        break;
+      }
+    }
+  }
   if (totalCol === -1) totalCol = headerRow.length - 1;
+
+  // For Day-2 files, also find the "1. Gün Puan" column — used as a sentinel
+  // to identify valid team-summary rows (athlete result rows will have 0 there).
+  let validityCol = totalCol;
+  if (day === 2) {
+    for (let col = 0; col < headerRow.length; col++) {
+      const h = str(headerRow[col]).toLowerCase();
+      if (h === "1. gün puan" || h.includes("1. gün puan")) {
+        validityCol = col;
+        break;
+      }
+    }
+  }
 
   // Some files have a sub-header row immediately after the main header
   // (e.g. Erkekler 1. Gün has DERECE/PUAN labels in row 2). Skip it.
@@ -127,7 +152,9 @@ export function parseTeamResultsSheet(
     ) continue;
 
     const total = toNum(row[totalCol]);
-    if (total === 0) continue; // skip teams with no points
+    // Use validityCol (1. Gün Puan for day-2 files, same as totalCol for day-1)
+    // to skip non-summary rows (athlete result rows have 0 in that column).
+    if (toNum(row[validityCol]) === 0) continue;
 
     results.push({ team, day, gender, branches: [], total });
   }
