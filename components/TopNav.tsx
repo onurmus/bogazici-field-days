@@ -8,8 +8,8 @@ const NAV_LINKS = [
   { href: "/gun/1", icon: "calendar_today", label: "1. Gün" },
   { href: "/gun/2", icon: "event_repeat", label: "2. Gün" },
   { href: "/program", icon: "calendar_month", label: "Program" },
+  { href: "/sporcular", icon: "person_search", label: "Sporcular" },
 //   { href: "/sonuclar", icon: "emoji_events", label: "Sonuçlar" },
-//   { href: "/sporcular", icon: "person", label: "Sporcular" },
 //   { href: "/hakkinda", icon: "info", label: "Hakkında" },
 ];
 
