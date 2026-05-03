@@ -25,6 +25,13 @@ export const DAY1_FOLDER_ID = "1Nf4UAetwA28IZsoPixKLT_ELxJqndOOQ";
 export const DAY2_FOLDER_ID = "1V9MZ5-QDlAAtZcbMWN51DZjASG2N1ULT";
 
 /**
+ * Google Drive folder containing team results XLSX files.
+ * Files: "Erkekler 1. Gün.xlsx", "Erkekler 2. Gün.xlsx",
+ *        "Kadınlar 1. Gün.xlsx", "Kadınlar 2. Gün.xlsx"
+ */
+export const TEAM_RESULTS_FOLDER_ID = "1MirrEmtT_OBCkvism4XomYuIzpg2YZO4";
+
+/**
  * Maps normalized schedule event names (uppercase) to Drive XLSX filename
  * bases (i.e. filename without the .xlsx extension, case-sensitive as on Drive).
  *

@@ -8,6 +8,7 @@ const SIDE_LINKS = [
   { href: "/gun/2", icon: "event_repeat", label: "2. GÜN" },
   { href: "/program", icon: "calendar_month", label: "PROGRAM" },
   { href: "/sporcular", icon: "person_search", label: "SPORCULAR" },
+  { href: "/takim-sonuclari", icon: "format_list_numbered", label: "TAKIM SIRALAMASI" },
 //   { href: "/rekorlar", icon: "emoji_events", label: "REKORLAR" },
   { href: "/hakkinda", icon: "info", label: "HAKKINDA" },
 ];

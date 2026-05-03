@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/gun/2", icon: "event_repeat", label: "2. Gün" },
   { href: "/program", icon: "calendar_month", label: "Program" },
   { href: "/sporcular", icon: "person_search", label: "Sporcular" },
+  { href: "/takim-sonuclari", icon: "format_list_numbered", label: "Takım Sıralaması" },
 //   { href: "/sonuclar", icon: "emoji_events", label: "Sonuçlar" },
 //   { href: "/hakkinda", icon: "info", label: "Hakkında" },
 ];
